@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import gspread
 from google.oauth2.service_account import Credentials
+import base64
 
 # ---- 🔹 Configurazione ----
 SHEET_NAME = "Dati_Condomini"  # Nome del foglio Google Sheets
@@ -26,7 +27,6 @@ def test_google_sheets_connection():
     try:
         gc = load_google_credentials()
         sh = gc.open(SHEET_NAME)
-        st.success("✅ Connessione a Google Sheets riuscita!")
         return sh
     except Exception as e:
         st.error(f"❌ Errore nell'accesso a Google Sheets: {e}")
@@ -67,7 +67,22 @@ if submit:
 
     try:
         # ---- 🔹 Se c'è un'immagine, convertirla in un URL temporaneo ----
-        immagine_url = None
+        immagine_url = "Nessuna immagine"
         if immagine_tetto:
             immagine_bytes = immagine_tetto.getvalue()  # Ottieni i byte dell'immagine
-            immagine_url = f"[{immagine
+            encoded_image = base64.b64encode(immagine_bytes).decode("utf-8")
+            immagine_url = f"data:image/png;base64,{encoded_image}"
+
+        # ---- 🔹 Creazione del record da salvare ----
+        dati_condominio = [
+            nome_condominio, indirizzo, codice_fiscale,
+            riscaldamento_centralizzato, tipo_riscaldamento,
+            raffreddamento_centralizzato, stato_tetto,
+            num_appartamenti, num_uffici, num_negozi,
+            immagine_url  # Base64 dell'immagine (o "Nessuna immagine")
+        ]
+        ws.append_row(dati_condominio)
+        st.success("✅ Dati inviati con successo!")
+
+    except Exception as e:
+        st.error(f"❌ Errore nell'invio dei dati: {e}")
