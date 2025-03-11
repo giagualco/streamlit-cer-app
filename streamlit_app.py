@@ -2,10 +2,12 @@ import streamlit as st
 import json
 import gspread
 from google.oauth2.service_account import Credentials
-import base64
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
+import tempfile
 
 # ---- 🔹 Configurazione ----
-SHEET_NAME = "Dati_Condomini"  # Nome del foglio Google Sheets
+SHEET_NAME = "Dati_Condomini"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
@@ -17,7 +19,13 @@ def load_google_credentials():
         credentials_info = json.loads(st.secrets["google_credentials"])
         credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(credentials)
-        return gc
+
+        # Autenticazione con Google Drive
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()
+        drive = GoogleDrive(gauth)
+        
+        return gc, drive
     except Exception as e:
         st.error(f"❌ Errore di autenticazione con Google: {e}")
         st.stop()
@@ -25,12 +33,28 @@ def load_google_credentials():
 # ---- 🔹 Test di Connessione a Google Sheets ----
 def test_google_sheets_connection():
     try:
-        gc = load_google_credentials()
+        gc, _ = load_google_credentials()
         sh = gc.open(SHEET_NAME)
         return sh
     except Exception as e:
         st.error(f"❌ Errore nell'accesso a Google Sheets: {e}")
         st.stop()
+
+# ---- 🔹 Funzione per caricare immagini su Google Drive ----
+def upload_image_to_drive(drive, file):
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+            temp_file.write(file.getvalue())
+            temp_file_path = temp_file.name
+
+        file_drive = drive.CreateFile({'title': file.name})
+        file_drive.SetContentFile(temp_file_path)
+        file_drive.Upload()
+        return f"https://drive.google.com/uc?id={file_drive['id']}"
+    
+    except Exception as e:
+        st.warning(f"⚠️ Errore nel caricamento dell'immagine: {e}")
+        return "Nessuna immagine"
 
 # ---- 🔹 UI Streamlit ----
 st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
@@ -61,17 +85,13 @@ with st.form("form_dati_condominio"):
 
 # ---- 🔹 Invio dei dati a Google Sheets ----
 if submit:
-    gc = load_google_credentials()
+    gc, drive = load_google_credentials()
     sh = test_google_sheets_connection()
     ws = sh.sheet1  # Seleziona il primo foglio
 
     try:
-        # ---- 🔹 Se c'è un'immagine, convertirla in un URL temporaneo ----
-        immagine_url = "Nessuna immagine"
-        if immagine_tetto:
-            immagine_bytes = immagine_tetto.getvalue()  # Ottieni i byte dell'immagine
-            encoded_image = base64.b64encode(immagine_bytes).decode("utf-8")
-            immagine_url = f"data:image/png;base64,{encoded_image}"
+        # ---- 🔹 Caricamento immagine su Google Drive e ottenimento link ----
+        immagine_url = upload_image_to_drive(drive, immagine_tetto) if immagine_tetto else "Nessuna immagine"
 
         # ---- 🔹 Creazione del record da salvare ----
         dati_condominio = [
@@ -79,7 +99,7 @@ if submit:
             riscaldamento_centralizzato, tipo_riscaldamento,
             raffreddamento_centralizzato, stato_tetto,
             num_appartamenti, num_uffici, num_negozi,
-            immagine_url  # Base64 dell'immagine (o "Nessuna immagine")
+            immagine_url  # Link dell'immagine su Google Drive
         ]
         ws.append_row(dati_condominio)
         st.success("✅ Dati inviati con successo!")
