@@ -1,9 +1,10 @@
 import streamlit as st
-import pandas as pd
+import json
 import gspread
 from google.oauth2.service_account import Credentials
 import folium
 from streamlit_folium import folium_static
+import pandas as pd
 
 # --- Configurazione della Pagina ---
 st.set_page_config(page_title="Gestione Condomini - CER", layout="wide")
@@ -11,9 +12,16 @@ st.set_page_config(page_title="Gestione Condomini - CER", layout="wide")
 # --- Titolo ---
 st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 
+# 🔍 Debug: Controlla il formato dei secrets di Streamlit
+try:
+    credentials_info = json.loads(st.secrets["google_credentials"])
+except Exception as e:
+    st.error(f"❌ Errore nel parsing del JSON delle credenziali: {e}")
+    st.stop()
+
 # --- Autenticazione con Google Sheets ---
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-credentials = Credentials.from_service_account_info(st.secrets["google_credentials"], scopes=scope)
+credentials = Credentials.from_service_account_info(credentials_info, scopes=scope)
 gc = gspread.authorize(credentials)
 
 # --- Apertura del Google Sheet ---
@@ -60,7 +68,6 @@ with st.form("new_condo"):
     numero_negozi = st.number_input("Numero di Negozi", min_value=0, step=1)
     latitudine = st.number_input("Latitudine", format="%.6f")
     longitudine = st.number_input("Longitudine", format="%.6f")
-
     submit = st.form_submit_button("Salva Condominio")
 
 # --- Salvataggio dei dati su Google Sheets ---
