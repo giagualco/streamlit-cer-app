@@ -7,3 +7,6 @@ streamlit-folium
 pandas
 geopy
 pydrive2
+gspread
+google-auth
+requests
