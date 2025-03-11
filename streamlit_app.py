@@ -68,12 +68,10 @@ m = folium.Map(location=[45.0703, 7.6869], zoom_start=15,
                tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", 
                attr='Esri')
 
-# Aggiunta strumenti di ricerca e misurazione
-LocateControl().add_to(m)
-MeasureControl(primary_length_unit='meters').add_to(m)
-search = Search(layer=m, geom_type='Point', placeholder='Cerca un indirizzo', collapsed=False).add_to(m)
+# Creazione di un FeatureGroup per i marker dei condomini
+condominio_layer = folium.FeatureGroup(name="Condomini")
 
-# Aggiunta punti per i condomini
+# Aggiunta punti per i condomini al FeatureGroup
 for row in data:
     address = row.get("Indirizzo", "")
     coords = get_coordinates(address)
@@ -82,7 +80,22 @@ for row in data:
             location=coords,
             popup=f"{row['Nome Condominio']}\n{address}",
             icon=folium.Icon(color="blue", icon="home")
-        ).add_to(m)
+        ).add_to(condominio_layer)  # Aggiungi il marker al FeatureGroup
+
+# Aggiunta del FeatureGroup alla mappa
+condominio_layer.add_to(m)
+
+# Aggiunta strumenti di ricerca e misurazione
+LocateControl().add_to(m)
+MeasureControl(primary_length_unit='meters').add_to(m)
+
+# Configurazione del plugin Search per cercare nei marker del FeatureGroup
+search = Search(
+    layer=condominio_layer,  # Passa il FeatureGroup come layer
+    geom_type='Point',
+    placeholder='Cerca un indirizzo',
+    collapsed=False
+).add_to(m)
 
 # Visualizzazione della mappa
 st_folium(m, width=800, height=500)
