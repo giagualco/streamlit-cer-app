@@ -21,12 +21,12 @@ def load_google_credentials():
         credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(credentials)
 
-        # Autenticazione con PyDrive2 usando Service Account JSON direttamente
+        # Configurazione PyDrive2 con Service Account
         gauth = GoogleAuth()
-        gauth.LoadCredentialsFile("credentials.json")  # Se hai già un file JSON di credenziali
+        gauth.LoadCredentialsFile("service_account.json")  # Assicura autenticazione diretta
         if gauth.credentials is None:
-            gauth.ServiceAuth()  # Usa il Service Account invece di client_secrets.json
-
+            gauth.ServiceAuth()  # Usa il Service Account direttamente
+        
         drive = GoogleDrive(gauth)
         return gc, drive
     except Exception as e:
