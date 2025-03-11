@@ -5,7 +5,7 @@ from streamlit_folium import st_folium
 from google.oauth2.service_account import Credentials
 import gspread
 from geopy.geocoders import Nominatim
-from folium.plugins import LocateControl, MeasureControl, Search
+from folium.plugins import LocateControl, MeasureControl
 
 # ---- Configurazione Google Sheets ----
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -31,12 +31,15 @@ def save_data_to_sheet(data):
 @st.cache_data
 def get_coordinates(address):
     geolocator = Nominatim(user_agent="streamlit-app")
-    location = geolocator.geocode(address)
-    return [location.latitude, location.longitude] if location else None
+    try:
+        location = geolocator.geocode(address)
+        return [location.latitude, location.longitude] if location else None
+    except:
+        return None
 
 # ---- UI Streamlit ----
 st.title("📍 Rilevamento Condomini - Comunità Energetiche Rinnovabili (CER)")
-st.write("Individua il condominio sulla mappa, piazza un PIN e raccogli le informazioni.")
+st.write("Individua il condominio sulla mappa, piazza un PIN con il **tasto destro** e raccogli le informazioni.")
 
 # ---- Sezione MAPPA ----
 st.subheader("🔍 Cerca il condominio sulla mappa")
@@ -55,8 +58,12 @@ if cerca and indirizzo:
     coords = get_coordinates(indirizzo)
     if coords:
         folium.Marker(location=coords, popup="Condominio", icon=folium.Icon(color="red")).add_to(m)
+        m.location = coords
     else:
         st.warning("⚠️ Indirizzo non trovato. Riprova con un altro.")
+
+# Istruzioni per l’utente
+st.markdown("➡️ **Istruzioni:** Usa il **tasto destro** sulla mappa per piazzare un PIN esattamente sul tetto del condominio.")
 
 # Mostra la mappa
 map_data = st_folium(m, width=800, height=500)
