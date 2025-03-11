@@ -3,63 +3,83 @@ import json
 import gspread
 from google.oauth2.service_account import Credentials
 
-# ---- Configurazione Google Sheets ----
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-SHEET_NAME = "Dati_Condomini"
+# ---- 🔹 Configurazione ----
+SHEET_NAME = "Dati_Condomini"  # Nome del foglio Google Sheets
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
-gc = load_google_credentials()
-try:
-    sh = gc.open("Dati_Condomini")  # Sostituisci con il nome esatto del tuo foglio
-    print("✅ Accesso a Google Sheets riuscito!")
-except Exception as e:
-    print(f"❌ Errore: {e}")
-
-
-# ---- Funzione per caricare credenziali ----
+# ---- 🔹 Funzione per caricare le credenziali Google ----
 def load_google_credentials():
-    credentials_info = json.loads(st.secrets["google_credentials"])
-    credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
-    return gspread.authorize(credentials)
+    try:
+        credentials_info = json.loads(st.secrets["google_credentials"])
+        credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
+        gc = gspread.authorize(credentials)
+        return gc
+    except Exception as e:
+        st.error(f"❌ Errore di autenticazione con Google: {e}")
+        st.stop()
 
-# ---- Funzione per salvare i dati nel Google Sheet ----
-def save_data_to_sheet(data):
+# ---- 🔹 Test di Connessione a Google Sheets ----
+def test_google_sheets_connection():
     try:
         gc = load_google_credentials()
-        sheet = gc.open(SHEET_NAME).sheet1
-        sheet.append_row(data)
+        sh = gc.open(SHEET_NAME)
+        st.success("✅ Connessione a Google Sheets riuscita!")
+        return sh
+    except Exception as e:
+        st.error(f"❌ Errore nell'accesso a Google Sheets: {e}")
+        st.stop()
+
+# ---- 🔹 UI Streamlit ----
+st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
+st.write("Compila i dati per registrare un condominio interessato all'installazione di un impianto fotovoltaico.")
+
+# ---- 🔹 Form di Raccolta Dati ----
+with st.form("form_dati_condominio"):
+    nome_condominio = st.text_input("🏢 Nome del Condominio")
+    indirizzo = st.text_input("📍 Indirizzo")
+    codice_fiscale = st.text_input("🆔 Codice Fiscale del Condominio")
+
+    st.write("### 🏠 Dati Tecnici dell'Edificio")
+    riscaldamento_centralizzato = st.selectbox("🔥 Riscaldamento Centralizzato?", ["Sì", "No"])
+    tipo_riscaldamento = st.selectbox("⚡ Tipo di Riscaldamento", ["Pompa di Calore", "Ibrido", "Altro"])
+    raffreddamento_centralizzato = st.selectbox("❄️ Raffreddamento Centralizzato?", ["Sì", "No", "Valutazione in corso"])
+    stato_tetto = st.selectbox("🏗️ Stato del Tetto", ["Buono", "Da ristrutturare", "Altro"])
+    
+    num_appartamenti = st.number_input("🏠 Numero Appartamenti", min_value=0, step=1)
+    num_uffici = st.number_input("🏢 Numero Uffici", min_value=0, step=1)
+    num_negozi = st.number_input("🛒 Numero Negozi", min_value=0, step=1)
+
+    # ---- 🔹 Upload Immagini (Screenshot o Foto del Tetto) ----
+    st.write("### 📸 Carica un'immagine del tetto (Screenshot da Google Maps o Foto)")
+    immagine_tetto = st.file_uploader("📎 Carica immagine", type=["png", "jpg", "jpeg"])
+
+    # ---- 🔹 Pulsante di invio ----
+    submit = st.form_submit_button("📤 Invia Dati")
+
+# ---- 🔹 Invio dei dati a Google Sheets ----
+if submit:
+    gc = load_google_credentials()
+    sh = test_google_sheets_connection()
+    ws = sh.sheet1  # Seleziona il primo foglio
+
+    try:
+        dati_condominio = [
+            nome_condominio, indirizzo, codice_fiscale,
+            riscaldamento_centralizzato, tipo_riscaldamento,
+            raffreddamento_centralizzato, stato_tetto,
+            num_appartamenti, num_uffici, num_negozi
+        ]
+        ws.append_row(dati_condominio)
         st.success("✅ Dati inviati con successo!")
+
+        # ---- 🔹 Salvataggio dell'immagine caricata ----
+        if immagine_tetto:
+            with open(f"uploads/{immagine_tetto.name}", "wb") as f:
+                f.write(immagine_tetto.getbuffer())
+            st.success(f"📸 Immagine salvata: {immagine_tetto.name}")
+
     except Exception as e:
         st.error(f"❌ Errore nell'invio dei dati: {e}")
-
-# ---- UI Streamlit ----
-st.title("🏢 Rilevamento Condomini - Comunità Energetiche Rinnovabili (CER)")
-st.write("Compila il modulo e carica uno **screenshot di Google Maps** o una **foto del tetto**.")
-
-# ---- Sezione MODULO RACCOLTA DATI ----
-st.subheader("📋 Inserisci i dati del condominio")
-
-nome_condominio = st.text_input("Nome del condominio")
-indirizzo = st.text_input("Indirizzo completo del condominio")
-riscaldamento = st.selectbox("Tipo di riscaldamento", ["Centralizzato", "Autonomo", "Nessuno"])
-tipo_riscaldamento = st.selectbox("Tipologia", ["Gas", "Pompa di calore", "Ibrido"], disabled=(riscaldamento == "Nessuno"))
-raffrescamento = st.selectbox("Raffrescamento centralizzato", ["Sì", "No"])
-n_condomini = st.number_input("Numero di condomini", min_value=1, step=1)
-stato_tetto = st.selectbox("Stato del tetto", ["Buono", "Mediocre", "Da rifare"])
-n_appartamenti = st.number_input("Numero di appartamenti", min_value=1, step=1)
-n_uffici = st.number_input("Numero di uffici", min_value=0, step=1)
-n_negozi = st.number_input("Numero di negozi", min_value=0, step=1)
-
-# ---- Sezione UPLOAD IMMAGINE ----
-st.subheader("📸 Carica un'immagine del tetto")
-uploaded_file = st.file_uploader("Carica uno screenshot di Google Maps o una foto del tetto", type=["jpg", "png", "jpeg"])
-
-# ---- INVIA DATI ----
-if st.button("📤 Invia dati"):
-    if not nome_condominio or not indirizzo or not uploaded_file:
-        st.warning("⚠️ Devi inserire tutti i dati e caricare un'immagine!")
-    else:
-        dati = [
-            nome_condominio, indirizzo, riscaldamento, tipo_riscaldamento, raffrescamento,
-            n_condomini, stato_tetto, n_appartamenti, n_uffici, n_negozi, uploaded_file.name
-        ]
-        save_data_to_sheet(dati)
