@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 import folium
 from streamlit_folium import folium_static
 
@@ -12,8 +12,8 @@ st.set_page_config(page_title="Gestione Condomini - CER", layout="wide")
 st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 
 # --- Autenticazione con Google Sheets ---
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["google_credentials"], scope)
+scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+credentials = Credentials.from_service_account_info(st.secrets["google_credentials"], scopes=scope)
 gc = gspread.authorize(credentials)
 
 # --- Apertura del Google Sheet ---
@@ -73,4 +73,3 @@ if submit:
     worksheet.append_row(nuovo_condominio)
     st.success("✅ Condominio aggiunto con successo!")
     st.experimental_rerun()  # Ricarica l'app per aggiornare i dati
-
