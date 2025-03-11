@@ -7,87 +7,83 @@ import gspread
 from geopy.geocoders import Nominatim
 from folium.plugins import LocateControl, MeasureControl, Search
 
-# Definiamo gli SCOPI per l'autenticazione Google
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+# Definizione delle credenziali Google
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-# ---- Funzione per caricare le credenziali Google ----
 def load_google_credentials():
+    """Carica le credenziali di Google"""
     try:
         credentials_info = json.loads(st.secrets["google_credentials"])
         credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
-        gc = gspread.authorize(credentials)
-        return gc
-    except Exception as e:
-        st.error("Errore di autenticazione con Google. Verifica le credenziali.")
+        return gspread.authorize(credentials)
+    except Exception:
+        st.error("Errore di autenticazione con Google. Controlla le credenziali.")
         st.stop()
 
-# ---- Funzione per ottenere i dati dal Google Sheet ----
-@st.cache_data
-def get_sheet_data(sheet_name):
-    try:
-        gc = load_google_credentials()
-        sheet = gc.open(sheet_name).sheet1
-        data = sheet.get_all_records()
-        return data
-    except Exception:
-        return []  # Se c'è un errore, restituisci una lista vuota senza interrompere
-
-# ---- Funzione per ottenere le coordinate da un indirizzo ----
-@st.cache_data
-def get_coordinates(address):
-    geolocator = Nominatim(user_agent="streamlit-app", timeout=10)
-    try:
-        location = geolocator.geocode(address)
-        return [location.latitude, location.longitude] if location else None
-    except:
-        return None
-
-# ---- Interfaccia Streamlit ----
-st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
-
-# Caricamento dati dal foglio Google Sheets
+# Configurazione del foglio Google Sheets
 SHEET_NAME = "Dati_Condomini"
-data = get_sheet_data(SHEET_NAME)
+gc = load_google_credentials()
+sh = gc.open(SHEET_NAME)
+worksheet = sh.sheet1
 
-# Controllo se ci sono dati
-if not data:
-    st.warning("⚠️ Nessun dato disponibile al momento. Controlla il foglio Google Sheets.")
-else:
-    # ---- SEZIONE MAPPA INTERATTIVA ----
-    st.subheader("📍 Mappa dei Condomini")
+# ---- UI Streamlit ----
+st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
+st.markdown("### Individua il condominio, inserisci i dati e invia il modulo.")
 
-    # Mappa con sfondo satellitare ESRI
-    m = folium.Map(location=[45.0703, 7.6869], zoom_start=15, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+# ---- SEZIONE MAPPA ----
+st.subheader("📍 Seleziona il condominio sulla mappa")
 
-    # FeatureGroup per i marker dei condomini
-    condominio_layer = folium.FeatureGroup(name="Condomini")
+# Mappa con sfondo satellitare
+m = folium.Map(
+    location=[45.0703, 7.6869], zoom_start=15,
+    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attr="Esri"
+)
 
-    # Aggiunta punti sulla mappa
-    for row in data:
-        address = row.get("Indirizzo", "")
-        coords = get_coordinates(address)
-        if coords:
-            folium.Marker(
-                location=coords,
-                popup=f"{row['Nome Condominio']}\n{address}",
-                icon=folium.Icon(color="blue", icon="home")
-            ).add_to(condominio_layer)
+# Aggiungere strumenti alla mappa
+LocateControl(auto_start=False).add_to(m)
+MeasureControl(primary_length_unit='meters').add_to(m)
 
-    # Aggiungere strumenti utili
-    condominio_layer.add_to(m)
-    LocateControl(auto_start=False).add_to(m)  # Localizzazione
-    MeasureControl(primary_length_unit='meters').add_to(m)  # Strumento di misurazione
+# Barra di ricerca per individuare un indirizzo
+Search(
+    layer=m, 
+    search_label="Indirizzo",
+    placeholder="Cerca un indirizzo",
+    collapsed=False
+).add_to(m)
 
-    # Barra di ricerca
-    search = Search(
-        layer=condominio_layer,
-        search_label="Nome Condominio",
-        placeholder="Cerca un condominio",
-        collapsed=False
-    ).add_to(m)
+# Mostra la mappa e permette all'utente di aggiungere un PIN
+map_data = st_folium(m, width=850, height=550)
 
-    # Visualizzazione della mappa
-    st_folium(m, width=850, height=550)
+# Verifica se l'utente ha selezionato un punto sulla mappa
+latitude, longitude = None, None
+if map_data and map_data["last_clicked"]:
+    latitude = map_data["last_clicked"]["lat"]
+    longitude = map_data["last_clicked"]["lng"]
+    st.success(f"📍 Coordinate selezionate: {latitude}, {longitude}")
+
+# ---- SEZIONE MODULO ----
+st.subheader("📋 Compila i dati del condominio")
+with st.form("dati_condominio"):
+    indirizzo = st.text_input("📍 Indirizzo del condominio")
+    num_appartamenti = st.number_input("🏠 Numero di appartamenti", min_value=0, step=1)
+    num_uffici = st.number_input("🏢 Numero di uffici", min_value=0, step=1)
+    num_negozi = st.number_input("🛍 Numero di negozi", min_value=0, step=1)
+
+    tipo_riscaldamento = st.selectbox("🔥 Tipo di riscaldamento", ["Centralizzato", "Pompa di calore", "Altro"])
+    raffreddamento = st.selectbox("❄️ Raffreddamento centralizzato?", ["Sì", "No", "Valutazione in corso"])
+    stato_tetto = st.selectbox("🏗️ Stato del tetto", ["Buono", "Da ristrutturare", "Invalutabile"])
+
+    submit_button = st.form_submit_button("📤 Invia Dati")
+
+# ---- SALVATAGGIO DATI ----
+if submit_button:
+    if latitude and longitude:
+        # Salva i dati in Google Sheets
+        worksheet.append_row([
+            indirizzo, latitude, longitude, num_appartamenti, num_uffici, num_negozi,
+            tipo_riscaldamento, raffreddamento, stato_tetto
+        ])
+        st.success("✅ Dati inviati con successo!")
+    else:
+        st.warning("⚠️ Seleziona un punto sulla mappa prima di inviare il modulo!")
