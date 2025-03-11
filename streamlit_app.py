@@ -66,20 +66,8 @@ if submit:
     ws = sh.sheet1  # Seleziona il primo foglio
 
     try:
-        dati_condominio = [
-            nome_condominio, indirizzo, codice_fiscale,
-            riscaldamento_centralizzato, tipo_riscaldamento,
-            raffreddamento_centralizzato, stato_tetto,
-            num_appartamenti, num_uffici, num_negozi
-        ]
-        ws.append_row(dati_condominio)
-        st.success("✅ Dati inviati con successo!")
-
-        # ---- 🔹 Salvataggio dell'immagine caricata ----
+        # ---- 🔹 Se c'è un'immagine, convertirla in un URL temporaneo ----
+        immagine_url = None
         if immagine_tetto:
-            with open(f"uploads/{immagine_tetto.name}", "wb") as f:
-                f.write(immagine_tetto.getbuffer())
-            st.success(f"📸 Immagine salvata: {immagine_tetto.name}")
-
-    except Exception as e:
-        st.error(f"❌ Errore nell'invio dei dati: {e}")
+            immagine_bytes = immagine_tetto.getvalue()  # Ottieni i byte dell'immagine
+            immagine_url = f"[{immagine
