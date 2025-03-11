@@ -11,27 +11,28 @@ try:
     st.write(st.secrets["google_credentials"])  # Stampiamo il JSON per verifica
 except Exception as e:
     st.error(f"Errore nel caricamento delle credenziali dai secrets: {e}")
+    st.stop()
 
 # 🔹 Caricamento credenziali dai secrets
 try:
     credentials_info = json.loads(st.secrets["google_credentials"])
 except json.JSONDecodeError as e:
-    st.error(f"Errore JSONDecodeError: {e}")
+    st.error(f"❌ Errore JSONDecodeError: {e}")
     st.stop()
 
-# 🔹 Aggiungiamo le scope corrette
+# 🔹 Aggiungiamo le scope corrette per Google Sheets e Google Drive
 scopes = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# 🔹 Creiamo le credenziali
+# 🔹 Creiamo le credenziali Google
 try:
     credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
     gc = gspread.authorize(credentials)
     st.success("✅ Autenticazione con Google Sheets riuscita!")
 except Exception as e:
-    st.error(f"Errore nell'autenticazione con Google Sheets: {e}")
+    st.error(f"❌ Errore nell'autenticazione con Google Sheets: {e}")
     st.stop()
 
 # 🔹 Apri il foglio Google Sheets
@@ -40,7 +41,7 @@ try:
     sheet = gc.open(SHEET_NAME).sheet1
     st.success(f"✅ Connessione al Google Sheet '{SHEET_NAME}' riuscita!")
 except Exception as e:
-    st.error(f"Errore nell'aprire il foglio: {e}")
+    st.error(f"❌ Errore nell'aprire il foglio: {e}")
     st.stop()
 
 # 🔹 Form per inserire dati
@@ -67,4 +68,4 @@ if submit_button:
                           numero_appartamenti, numero_uffici, numero_negozi])
         st.success("✅ Dati salvati correttamente nel Google Sheet!")
     except Exception as e:
-        st.error(f"Errore nel salvataggio dei dati: {e}")
+        st.error(f"❌ Errore nel salvataggio dei dati: {e}")
