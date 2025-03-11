@@ -39,11 +39,11 @@ def get_coordinates(address):
 
 # ---- UI Streamlit ----
 st.title("📍 Rilevamento Condomini - Comunità Energetiche Rinnovabili (CER)")
-st.write("Individua il condominio sulla mappa, piazza un PIN con il **tasto destro** e raccogli le informazioni.")
+st.write("Individua il condominio sulla mappa e trascina il PIN sul tetto.")
 
 # ---- Sezione MAPPA ----
 st.subheader("🔍 Cerca il condominio sulla mappa")
-indirizzo = st.text_input("Inserisci l'indirizzo del condominio")
+indirizzo = st.text_input("Inserisci l'indirizzo del condominio (usa Google Autocomplete)")
 cerca = st.button("📍 Trova indirizzo")
 
 # Creazione mappa con visualizzazione satellitare
@@ -53,17 +53,23 @@ m = folium.Map(location=[45.0703, 7.6869], zoom_start=16, tiles="https://mt1.goo
 LocateControl().add_to(m)
 MeasureControl(primary_length_unit='meters').add_to(m)
 
-# Cerca indirizzo e piazza un marker
+# Cerca indirizzo e piazza un marker trascinabile
 if cerca and indirizzo:
     coords = get_coordinates(indirizzo)
     if coords:
-        folium.Marker(location=coords, popup="Condominio", icon=folium.Icon(color="red")).add_to(m)
+        marker = folium.Marker(
+            location=coords, 
+            popup="Trascina il PIN sul tetto",
+            draggable=True, 
+            icon=folium.Icon(color="red")
+        )
+        marker.add_to(m)
         m.location = coords
     else:
         st.warning("⚠️ Indirizzo non trovato. Riprova con un altro.")
 
 # Istruzioni per l’utente
-st.markdown("➡️ **Istruzioni:** Usa il **tasto destro** sulla mappa per piazzare un PIN esattamente sul tetto del condominio.")
+st.markdown("➡️ **Istruzioni:** Cerca l'indirizzo, poi **trascina il PIN** per posizionarlo sul tetto corretto.")
 
 # Mostra la mappa
 map_data = st_folium(m, width=800, height=500)
@@ -84,7 +90,7 @@ n_negozi = st.number_input("Numero di negozi", min_value=0, step=1)
 # ---- INVIA DATI ----
 if st.button("📤 Invia dati"):
     if not nome_condominio or not indirizzo or not map_data["last_clicked"]:
-        st.warning("⚠️ Devi inserire tutti i dati e piazzare un PIN sulla mappa!")
+        st.warning("⚠️ Devi inserire tutti i dati e trascinare il PIN sulla mappa!")
     else:
         lat, lon = map_data["last_clicked"]["lat"], map_data["last_clicked"]["lng"]
         dati = [nome_condominio, indirizzo, lat, lon, riscaldamento, tipo_riscaldamento, raffrescamento, n_condomini, stato_tetto, n_appartamenti, n_uffici, n_negozi]
