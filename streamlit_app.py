@@ -7,8 +7,12 @@ import folium
 from streamlit_folium import folium_static
 
 # Recupero credenziali da Streamlit Secrets
-credentials_info = st.secrets["google_credentials"]
-credentials = Credentials.from_service_account_info(json.loads(credentials_info), scopes=["https://www.googleapis.com/auth/spreadsheets"])
+import json
+from google.oauth2.service_account import Credentials
+
+credentials_info = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+credentials = Credentials.from_service_account_info(credentials_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+
 
 gc = gspread.authorize(credentials)
 sheet = gc.open("Dati_Condomini").sheet1  # Assicurati che il foglio esista
