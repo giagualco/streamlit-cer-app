@@ -1,9 +1,8 @@
 import streamlit as st
 import json
 import gspread
+import requests
 from google.oauth2.service_account import Credentials
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
 import tempfile
 
 # ---- 🔹 Configurazione ----
@@ -20,15 +19,7 @@ def load_google_credentials():
         credentials_info = json.loads(st.secrets["google_credentials"])
         credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(credentials)
-
-        # Configurazione PyDrive2 con Service Account
-        gauth = GoogleAuth()
-        gauth.LoadCredentialsFile("service_account.json")  # Assicura autenticazione diretta
-        if gauth.credentials is None:
-            gauth.ServiceAuth()  # Usa il Service Account direttamente
-        
-        drive = GoogleDrive(gauth)
-        return gc, drive
+        return gc, credentials
     except Exception as e:
         st.error(f"❌ Errore di autenticazione con Google: {e}")
         st.stop()
@@ -43,18 +34,33 @@ def test_google_sheets_connection():
         st.error(f"❌ Errore nell'accesso a Google Sheets: {e}")
         st.stop()
 
-# ---- 🔹 Funzione per caricare immagini su Google Drive ----
-def upload_image_to_drive(drive, file):
+# ---- 🔹 Funzione per caricare immagini su Google Drive (senza PyDrive2) ----
+def upload_image_to_drive(credentials, file):
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
-            temp_file.write(file.getvalue())
-            temp_file_path = temp_file.name
+        headers = {"Authorization": f"Bearer {credentials.token}"}
+        metadata = {
+            "name": file.name,
+            "parents": ["root"],  # Puoi specificare una cartella se necessario
+        }
 
-        file_drive = drive.CreateFile({'title': file.name})
-        file_drive.SetContentFile(temp_file_path)
-        file_drive.Upload()
-        return f"https://drive.google.com/uc?id={file_drive['id']}"
-    
+        files = {
+            "data": ("metadata", json.dumps(metadata), "application/json"),
+            "file": (file.name, file.getvalue(), file.type),
+        }
+
+        response = requests.post(
+            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+            headers=headers,
+            files=files,
+        )
+
+        if response.status_code == 200:
+            file_id = response.json().get("id")
+            return f"https://drive.google.com/uc?id={file_id}"
+        else:
+            st.warning(f"⚠️ Errore nel caricamento dell'immagine: {response.text}")
+            return "Nessuna immagine"
+
     except Exception as e:
         st.warning(f"⚠️ Errore nel caricamento dell'immagine: {e}")
         return "Nessuna immagine"
@@ -88,13 +94,13 @@ with st.form("form_dati_condominio"):
 
 # ---- 🔹 Invio dei dati a Google Sheets ----
 if submit:
-    gc, drive = load_google_credentials()
+    gc, credentials = load_google_credentials()
     sh = test_google_sheets_connection()
     ws = sh.sheet1  # Seleziona il primo foglio
 
     try:
         # ---- 🔹 Caricamento immagine su Google Drive e ottenimento link ----
-        immagine_url = upload_image_to_drive(drive, immagine_tetto) if immagine_tetto else "Nessuna immagine"
+        immagine_url = upload_image_to_drive(credentials, immagine_tetto) if immagine_tetto else "Nessuna immagine"
 
         # ---- 🔹 Creazione del record da salvare ----
         dati_condominio = [
