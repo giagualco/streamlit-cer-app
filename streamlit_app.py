@@ -11,7 +11,19 @@ credentials_info = st.secrets["google_credentials"]
 credentials = Credentials.from_service_account_info(credentials_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
 
 gc = gspread.authorize(credentials)
-sheet = gc.open("Dati_Condomini").sheet1  # Assicurati che il foglio esista
+
+# Test di accesso ai Google Sheets
+try:
+    sheet_list = gc.openall()
+    st.write("Google Sheets disponibili:", [s.title for s in sheet_list])
+except Exception as e:
+    st.error(f"Errore di accesso: {e}")
+
+# Verifica il nome del file
+try:
+    sheet = gc.open("Dati_Condomini").sheet1  # Assicurati che il nome sia corretto
+except Exception as e:
+    st.error(f"Errore nell'aprire il foglio: {e}")
 
 # Interfaccia Streamlit
 st.title("Gestione Impianti Fotovoltaici per CER")
@@ -40,6 +52,9 @@ stato_tetto = st.selectbox("Stato del tetto", ["Buono", "Da ristrutturare", "Non
 
 # Invio dati a Google Sheets
 if st.button("Salva i dati"):
-    dati = [nome_condominio, indirizzo, codice_fiscale, riscaldamento, tipo_riscaldamento, raffreddamento, num_condomini, num_appartamenti, num_uffici, num_negozi, stato_tetto]
-    sheet.append_row(dati)
-    st.success("Dati salvati con successo su Google Sheets!")
+    try:
+        dati = [nome_condominio, indirizzo, codice_fiscale, riscaldamento, tipo_riscaldamento, raffreddamento, num_condomini, num_appartamenti, num_uffici, num_negozi, stato_tetto]
+        sheet.append_row(dati)
+        st.success("Dati salvati con successo su Google Sheets!")
+    except Exception as e:
+        st.error(f"Errore nel salvataggio su Google Sheets: {e}")
