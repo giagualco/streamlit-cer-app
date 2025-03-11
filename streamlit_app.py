@@ -1,20 +1,14 @@
 import streamlit as st
 import pandas as pd
-import json
 import gspread
+import json
 from google.oauth2.service_account import Credentials
 import folium
 from streamlit_folium import folium_static
 
 # Recupero credenziali da Streamlit Secrets
-import json
-from google.oauth2.service_account import Credentials
-
-# Legge le credenziali da Streamlit Secrets
-credentials_info = json.loads(st.secrets["google_credentials"])
+credentials_info = st.secrets["google_credentials"]
 credentials = Credentials.from_service_account_info(credentials_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
-
-
 
 gc = gspread.authorize(credentials)
 sheet = gc.open("Dati_Condomini").sheet1  # Assicurati che il foglio esista
