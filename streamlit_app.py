@@ -7,8 +7,7 @@ st.title("Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 
 # 🔹 Debug: Controlla se le credenziali sono caricate correttamente
 try:
-    st.write("🔎 Debug: Contenuto dei secrets di Streamlit:")
-    st.write(st.secrets["google_credentials"])  # Stampiamo il JSON per verifica
+  
 except Exception as e:
     st.error(f"Errore nel caricamento delle credenziali dai secrets: {e}")
     st.stop()
