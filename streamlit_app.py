@@ -19,10 +19,11 @@ def load_google_credentials():
         st.error(f"Errore di autenticazione con Google: {e}")
         st.stop()
 
-# ---- Funzione per connettersi al foglio Google Sheets ----
-@st.cache_data  # Memorizza solo i dati, non l'oggetto sheet
-def get_sheet_data(gc, sheet_name):
+# ---- Funzione per ottenere i dati dal foglio Google Sheets ----
+@st.cache_data  # Memorizza solo i dati (hashabili)
+def get_sheet_data(sheet_name):
     try:
+        gc = load_google_credentials()  # Creiamo una nuova connessione qui
         sheet = gc.open(sheet_name).sheet1
         data = sheet.get_all_records()
         st.success("✅ Connessione al Google Sheet riuscita!")
@@ -45,10 +46,9 @@ def get_coordinates(address):
 # ---- Interfaccia Streamlit ----
 st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 
-# Caricamento credenziali e connessione al foglio
-gc = load_google_credentials()
+# Caricamento dati dal foglio Google Sheets
 SHEET_NAME = "Dati_Condomini"
-data = get_sheet_data(gc, SHEET_NAME)  # Ottieni solo i dati, non l'oggetto sheet
+data = get_sheet_data(SHEET_NAME)  # Ottieni i dati memorizzati nella cache
 
 # Sezione dati condomini
 st.subheader("📋 Dati dei Condomini")
