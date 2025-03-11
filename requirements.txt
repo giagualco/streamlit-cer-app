@@ -5,3 +5,4 @@ gspread
 streamlit
 streamlit-folium
 pandas
+geopy
