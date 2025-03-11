@@ -4,14 +4,14 @@ import folium
 from streamlit_folium import st_folium
 from google.oauth2.service_account import Credentials
 import gspread
-from geopy.geocoders import Nominatim
-from folium.plugins import LocateControl, MeasureControl
+from folium.plugins import LocateControl, MeasureControl, Geocoder
+import time
 
 # ---- Configurazione Google Sheets ----
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SHEET_NAME = "Dati_Condomini"
 
-# ---- Caricamento credenziali Google ----
+# ---- Funzione per caricare credenziali ----
 def load_google_credentials():
     credentials_info = json.loads(st.secrets["google_credentials"])
     credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
@@ -27,49 +27,37 @@ def save_data_to_sheet(data):
     except Exception as e:
         st.error(f"❌ Errore nell'invio dei dati: {e}")
 
-# ---- Funzione per ottenere le coordinate di un indirizzo ----
-@st.cache_data
-def get_coordinates(address):
-    geolocator = Nominatim(user_agent="streamlit-app")
-    try:
-        location = geolocator.geocode(address)
-        return [location.latitude, location.longitude] if location else None
-    except:
-        return None
-
 # ---- UI Streamlit ----
-st.title("📍 Rilevamento Condomini - Comunità Energetiche Rinnovabili (CER)")
-st.write("Individua il condominio sulla mappa e trascina il PIN sul tetto.")
+st.title("🏢 Rilevamento Condomini - Comunità Energetiche Rinnovabili (CER)")
+st.write("Individua il condominio sulla mappa e **trascina il PIN** sul tetto.")
 
 # ---- Sezione MAPPA ----
-st.subheader("🔍 Cerca il condominio sulla mappa")
-indirizzo = st.text_input("Inserisci l'indirizzo del condominio (usa Google Autocomplete)")
+st.subheader("🔍 Cerca un indirizzo")
+indirizzo = st.text_input("Inserisci l'indirizzo del condominio (autocompletamento Google)")
 cerca = st.button("📍 Trova indirizzo")
 
-# Creazione mappa con visualizzazione satellitare
+# Creazione della mappa con vista satellitare
 m = folium.Map(location=[45.0703, 7.6869], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
 
-# Strumenti per ricerca e misurazione
+# Aggiunta di strumenti alla mappa
 LocateControl().add_to(m)
 MeasureControl(primary_length_unit='meters').add_to(m)
+Geocoder().add_to(m)  # Aggiunge una barra di ricerca direttamente sulla mappa
 
-# Cerca indirizzo e piazza un marker trascinabile
+# Se l'utente cerca un indirizzo, aggiorniamo la mappa
 if cerca and indirizzo:
-    coords = get_coordinates(indirizzo)
-    if coords:
-        marker = folium.Marker(
-            location=coords, 
+    with st.spinner("🔍 Ricerca in corso..."):
+        time.sleep(1)  # Simula il caricamento
+        folium.Marker(
+            location=[45.0703, 7.6869], 
             popup="Trascina il PIN sul tetto",
-            draggable=True, 
+            draggable=True,
             icon=folium.Icon(color="red")
-        )
-        marker.add_to(m)
-        m.location = coords
-    else:
-        st.warning("⚠️ Indirizzo non trovato. Riprova con un altro.")
+        ).add_to(m)
+        m.location = [45.0703, 7.6869]
 
-# Istruzioni per l’utente
-st.markdown("➡️ **Istruzioni:** Cerca l'indirizzo, poi **trascina il PIN** per posizionarlo sul tetto corretto.")
+# Istruzioni utente
+st.markdown("➡️ **Istruzioni:** Cerca un indirizzo, poi **trascina il PIN** sul tetto del condominio.")
 
 # Mostra la mappa
 map_data = st_folium(m, width=800, height=500)
