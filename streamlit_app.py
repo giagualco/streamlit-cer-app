@@ -7,10 +7,10 @@ import gspread
 from geopy.geocoders import Nominatim
 from folium.plugins import LocateControl, MeasureControl, Search
 
-# Definisci gli scopes necessari
+# ---- Definizione degli scope Google ----
 SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",  # Accesso a Google Sheets
-    "https://www.googleapis.com/auth/drive",         # Accesso a Google Drive (opzionale)
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
 ]
 
 # ---- Funzione per caricare le credenziali Google ----
@@ -19,29 +19,26 @@ def load_google_credentials():
         credentials_info = json.loads(st.secrets["google_credentials"])
         credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(credentials)
-        st.success("✅ Autenticazione con Google riuscita!")
         return gc
     except Exception as e:
         st.error(f"Errore di autenticazione con Google: {e}")
         st.stop()
 
 # ---- Funzione per ottenere i dati dal foglio Google Sheets ----
-@st.cache_data  # Memorizza solo i dati (hashabili)
+@st.cache_data
 def get_sheet_data(sheet_name):
     try:
-        gc = load_google_credentials()  # Creiamo una nuova connessione qui
+        gc = load_google_credentials()
         sheet = gc.open(sheet_name).sheet1
-        data = sheet.get_all_records()
-        st.success("✅ Connessione al Google Sheet riuscita!")
-        return data
+        return sheet.get_all_records()
     except Exception as e:
         st.error(f"Errore nell'aprire il foglio: {e}")
         st.stop()
 
 # ---- Funzione per ottenere le coordinate di un indirizzo ----
-@st.cache_data  # Memorizza le coordinate per evitare chiamate ripetute
+@st.cache_data
 def get_coordinates(address):
-    geolocator = Nominatim(user_agent="streamlit-app", timeout=10)  # Aggiunto timeout
+    geolocator = Nominatim(user_agent="streamlit-app", timeout=10)
     try:
         location = geolocator.geocode(address)
         return [location.latitude, location.longitude] if location else None
@@ -54,32 +51,23 @@ st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 
 # Caricamento dati dal foglio Google Sheets
 SHEET_NAME = "Dati_Condomini"
-data = get_sheet_data(SHEET_NAME)  # Ottieni i dati memorizzati nella cache
+data = get_sheet_data(SHEET_NAME)
 
 # Sezione dati condomini
 st.subheader("📋 Dati dei Condomini")
-st.dataframe(data)  # Utilizzo dei dati già caricati
+st.dataframe(data)
 
 # Sezione mappa interattiva
 st.subheader("📍 Mappa dei Condomini")
 
-# Creazione mappa con Esri Satellite e overlay per i nomi delle strade
-m = folium.Map(location=[45.0703, 7.6869], zoom_start=15)
+# Creazione mappa con sfondo satellitare
+m = folium.Map(location=[45.0703, 7.6869], zoom_start=16, tiles="https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+               attr="Google", subdomains=['mt0', 'mt1', 'mt2', 'mt3'])
 
-# Aggiunta tile layer Esri Satellite
-esri_satellite = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-folium.TileLayer(tiles=esri_satellite, attr='Esri', name='Esri Satellite').add_to(m)
-
-# Aggiunta tile layer per i nomi delle strade (OpenStreetMap)
-folium.TileLayer(tiles='OpenStreetMap', name='Nomi delle strade').add_to(m)
-
-# Aggiunta controllo per scegliere il layer
-folium.LayerControl().add_to(m)
-
-# Creazione di un FeatureGroup per i marker dei condomini
+# Creazione di un FeatureGroup per i marker
 condominio_layer = folium.FeatureGroup(name="Condomini")
 
-# Aggiunta punti per i condomini al FeatureGroup
+# Aggiunta punti per i condomini
 for row in data:
     address = row.get("Indirizzo", "")
     coords = get_coordinates(address)
@@ -88,23 +76,21 @@ for row in data:
             location=coords,
             popup=f"{row['Nome Condominio']}\n{address}",
             icon=folium.Icon(color="blue", icon="home")
-        ).add_to(condominio_layer)  # Aggiungi il marker al FeatureGroup
+        ).add_to(condominio_layer)
 
-# Aggiunta del FeatureGroup alla mappa
+# Aggiunta FeatureGroup alla mappa
 condominio_layer.add_to(m)
 
-# Aggiunta strumenti di ricerca e misurazione
+# Aggiunta strumenti di localizzazione, misurazione e ricerca
 LocateControl().add_to(m)
 MeasureControl(primary_length_unit='meters').add_to(m)
-
-# Configurazione del plugin Search per cercare nei marker del FeatureGroup
 search = Search(
-    layer=condominio_layer,  # Passa il FeatureGroup come layer
-    search_label="Nome Condominio",  # Campo da cercare nei marker
+    layer=condominio_layer,
+    search_label="Nome Condominio",
     geom_type='Point',
     placeholder='Cerca un condominio',
     collapsed=False
 ).add_to(m)
 
 # Visualizzazione della mappa
-st_folium(m, width=800, height=500)
+st_folium(m, width=900, height=600)
