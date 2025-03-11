@@ -10,8 +10,10 @@ from streamlit_folium import folium_static
 import json
 from google.oauth2.service_account import Credentials
 
-credentials_info = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+# Legge le credenziali da Streamlit Secrets
+credentials_info = json.loads(st.secrets["google_credentials"])
 credentials = Credentials.from_service_account_info(credentials_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+
 
 
 gc = gspread.authorize(credentials)
