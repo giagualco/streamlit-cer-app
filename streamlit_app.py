@@ -34,13 +34,13 @@ def test_google_sheets_connection():
         st.error(f"❌ Errore nell'accesso a Google Sheets: {e}")
         st.stop()
 
-# ---- 🔹 Funzione per caricare immagini su Google Drive (senza PyDrive2) ----
+# ---- 🔹 Funzione per caricare immagini su Google Drive ----
 def upload_image_to_drive(credentials, file):
     try:
         headers = {"Authorization": f"Bearer {credentials.token}"}
         metadata = {
             "name": file.name,
-            "parents": ["root"],  # Puoi specificare una cartella se necessario
+            "parents": ["root"],
         }
 
         files = {
@@ -71,23 +71,31 @@ st.write("Compila i dati per registrare un condominio interessato all'installazi
 
 # ---- 🔹 Form di Raccolta Dati ----
 with st.form("form_dati_condominio"):
+    # ---- 🧑‍💼 Nome e Cognome del Segnalatore ----
+    nome_segnalatore = st.text_input("🧑‍💼 Nome del Segnalatore")
+    cognome_segnalatore = st.text_input("🧑‍💼 Cognome del Segnalatore")
+
+    # ---- 🏢 Dati del Condominio ----
     nome_condominio = st.text_input("🏢 Nome del Condominio")
     indirizzo = st.text_input("📍 Indirizzo")
     codice_fiscale = st.text_input("🆔 Codice Fiscale del Condominio")
 
     st.write("### 🏠 Dati Tecnici dell'Edificio")
     riscaldamento_centralizzato = st.selectbox("🔥 Riscaldamento Centralizzato?", ["Sì", "No"])
-    tipo_riscaldamento = st.selectbox("⚡ Tipo di Riscaldamento", ["Pompa di Calore", "Ibrido", "Altro"])
+    tipo_riscaldamento = st.selectbox("⚡ Tipo di Riscaldamento", ["Gas", "Pompa di Calore", "Ibrido", "Elettrico", "Nessuno"])
     raffreddamento_centralizzato = st.selectbox("❄️ Raffreddamento Centralizzato?", ["Sì", "No", "Valutazione in corso"])
-    stato_tetto = st.selectbox("🏗️ Stato del Tetto", ["Buono", "Da ristrutturare", "Altro"])
+    stato_tetto = st.selectbox("🏗️ Stato del Tetto", ["Buono", "Da ristrutturare", "Da rifare completamente"])
     
     num_appartamenti = st.number_input("🏠 Numero Appartamenti", min_value=0, step=1)
     num_uffici = st.number_input("🏢 Numero Uffici", min_value=0, step=1)
     num_negozi = st.number_input("🛒 Numero Negozi", min_value=0, step=1)
 
-    # ---- 🔹 Upload Immagini (Screenshot o Foto del Tetto) ----
+    # ---- 📸 Upload Immagine ----
     st.write("### 📸 Carica un'immagine del tetto (Screenshot da Google Maps o Foto)")
     immagine_tetto = st.file_uploader("📎 Carica immagine", type=["png", "jpg", "jpeg"])
+
+    # ---- 📝 Campo Note ----
+    note = st.text_area("📝 Note Aggiuntive (Opzionale)", "")
 
     # ---- 🔹 Pulsante di invio ----
     submit = st.form_submit_button("📤 Invia Dati")
@@ -104,11 +112,12 @@ if submit:
 
         # ---- 🔹 Creazione del record da salvare ----
         dati_condominio = [
+            nome_segnalatore, cognome_segnalatore,
             nome_condominio, indirizzo, codice_fiscale,
             riscaldamento_centralizzato, tipo_riscaldamento,
             raffreddamento_centralizzato, stato_tetto,
             num_appartamenti, num_uffici, num_negozi,
-            immagine_url  # Link dell'immagine su Google Drive
+            immagine_url, note  # Link dell'immagine su Google Drive + Note
         ]
         ws.append_row(dati_condominio)
         st.success("✅ Dati inviati con successo!")
