@@ -6,3 +6,4 @@ google-auth-httplib2
 pandas
 folium
 streamlit-folium
+oauth2client
