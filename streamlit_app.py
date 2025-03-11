@@ -7,11 +7,17 @@ import gspread
 from geopy.geocoders import Nominatim
 from folium.plugins import LocateControl, MeasureControl, Search
 
+# Definisci gli scopes necessari
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",  # Accesso a Google Sheets
+    "https://www.googleapis.com/auth/drive",         # Accesso a Google Drive (opzionale)
+]
+
 # ---- Funzione per caricare le credenziali Google ----
 def load_google_credentials():
     try:
         credentials_info = json.loads(st.secrets["google_credentials"])
-        credentials = Credentials.from_service_account_info(credentials_info)
+        credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(credentials)
         st.success("✅ Autenticazione con Google riuscita!")
         return gc
