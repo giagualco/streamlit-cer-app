@@ -3,47 +3,31 @@ import gspread
 import json
 from google.oauth2.service_account import Credentials
 
-# 🔹 Caricamento delle credenziali dal file JSON nei secrets di Streamlit
+st.title("Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
+
+# 🔹 Caricamento credenziali dai secrets
 credentials_info = json.loads(st.secrets["google_credentials"])
 
-# 🔹 Definizione delle scopes corrette per Google Sheets e Google Drive
+# 🔹 Aggiungiamo le scope corrette
 scopes = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-# 🔹 Creazione delle credenziali con le nuove scopes
+# 🔹 Creiamo le credenziali
 credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
 
-# 🔹 Connessione a Google Sheets
+# 🔹 Autenticazione con Google Sheets
 gc = gspread.authorize(credentials)
 
-# 🔹 Nome del file Google Sheets
-SPREADSHEET_NAME = "Dati_Condomini"
-
-# 🔹 Test di accesso a Google Sheets
+# 🔹 Apri il foglio Google Sheets (controlla il nome!)
+SHEET_NAME = "Dati_Condomini"
 try:
-    # Recupera tutti i fogli disponibili
-    spreadsheet_list = gc.openall()
-    st.success("✅ Connessione a Google Sheets riuscita!")
-
-    # Verifica se il foglio "Dati_Condomini" esiste
-    sheet_names = [sheet.title for sheet in spreadsheet_list]
-    if SPREADSHEET_NAME not in sheet_names:
-        st.warning(f"⚠️ Il foglio '{SPREADSHEET_NAME}' non esiste. Controlla il nome nel tuo Google Drive.")
-
-    # Apre il foglio
-    sheet = gc.open(SPREADSHEET_NAME).sheet1
-    st.success(f"📂 Foglio '{SPREADSHEET_NAME}' aperto correttamente!")
-
-except gspread.exceptions.APIError as e:
-    st.error(f"Errore di accesso: {e}")
+    sheet = gc.open(SHEET_NAME).sheet1
 except Exception as e:
-    st.error(f"Errore generico: {e}")
+    st.error(f"Errore nell'aprire il foglio: {e}")
 
-# 🔹 Interfaccia Streamlit per testare l'inserimento di dati
-st.title("Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
-
+# 🔹 Form per inserire dati
 with st.form("condominio_form"):
     nome_condominio = st.text_input("Nome Condominio")
     indirizzo = st.text_input("Indirizzo")
@@ -53,24 +37,18 @@ with st.form("condominio_form"):
     raffreddamento = st.selectbox("Raffreddamento Centralizzato?", ["Sì", "No", "Da Valutare"])
     numero_condomini = st.number_input("Numero di Condomini", min_value=1, step=1)
     stato_tetto = st.selectbox("Stato del Tetto", ["Buono", "Mediocre", "Da Rifare"])
-
-    # Dati suddivisione unità
     numero_appartamenti = st.number_input("Numero Appartamenti", min_value=0, step=1)
     numero_uffici = st.number_input("Numero Uffici", min_value=0, step=1)
     numero_negozi = st.number_input("Numero Negozi", min_value=0, step=1)
 
     submit_button = st.form_submit_button("Salva Dati")
 
-# 🔹 Salvataggio dei dati su Google Sheets
 if submit_button:
     try:
-        new_row = [
-            nome_condominio, indirizzo, codice_fiscale,
-            impianto_riscaldamento, tipo_riscaldamento, raffreddamento,
-            numero_condomini, stato_tetto,
-            numero_appartamenti, numero_uffici, numero_negozi
-        ]
-        sheet.append_row(new_row)
-        st.success("✅ Dati salvati correttamente su Google Sheets!")
-    except gspread.exceptions.APIError as e:
+        sheet.append_row([nome_condominio, indirizzo, codice_fiscale,
+                          impianto_riscaldamento, tipo_riscaldamento, raffreddamento,
+                          numero_condomini, stato_tetto,
+                          numero_appartamenti, numero_uffici, numero_negozi])
+        st.success("✅ Dati salvati correttamente nel Google Sheet!")
+    except Exception as e:
         st.error(f"Errore nel salvataggio dei dati: {e}")
