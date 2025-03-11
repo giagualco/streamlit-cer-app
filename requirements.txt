@@ -1,9 +1,7 @@
-streamlit
-gspread
 google-auth
 google-auth-oauthlib
 google-auth-httplib2
-pandas
-folium
+gspread
+streamlit
 streamlit-folium
-oauth2client
+pandas
