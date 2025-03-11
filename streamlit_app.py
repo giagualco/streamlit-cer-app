@@ -7,6 +7,14 @@ from google.oauth2.service_account import Credentials
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 SHEET_NAME = "Dati_Condomini"
 
+gc = load_google_credentials()
+try:
+    sh = gc.open("Dati_Condomini")  # Sostituisci con il nome esatto del tuo foglio
+    print("✅ Accesso a Google Sheets riuscito!")
+except Exception as e:
+    print(f"❌ Errore: {e}")
+
+
 # ---- Funzione per caricare credenziali ----
 def load_google_credentials():
     credentials_info = json.loads(st.secrets["google_credentials"])
