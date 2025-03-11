@@ -63,10 +63,8 @@ st.dataframe(data)  # Utilizzo dei dati già caricati
 # Sezione mappa interattiva
 st.subheader("📍 Mappa dei Condomini")
 
-# Creazione mappa con Esri Satellite
-m = folium.Map(location=[45.0703, 7.6869], zoom_start=15, 
-               tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", 
-               attr='Esri')
+# Creazione mappa con tile layer che include i nomi delle strade
+m = folium.Map(location=[45.0703, 7.6869], zoom_start=15, tiles="OpenStreetMap")
 
 # Creazione di un FeatureGroup per i marker dei condomini
 condominio_layer = folium.FeatureGroup(name="Condomini")
@@ -92,8 +90,9 @@ MeasureControl(primary_length_unit='meters').add_to(m)
 # Configurazione del plugin Search per cercare nei marker del FeatureGroup
 search = Search(
     layer=condominio_layer,  # Passa il FeatureGroup come layer
+    search_label="Nome Condominio",  # Campo da cercare nei marker
     geom_type='Point',
-    placeholder='Cerca un indirizzo',
+    placeholder='Cerca un condominio',
     collapsed=False
 ).add_to(m)
 
