@@ -63,8 +63,18 @@ st.dataframe(data)  # Utilizzo dei dati già caricati
 # Sezione mappa interattiva
 st.subheader("📍 Mappa dei Condomini")
 
-# Creazione mappa con tile layer che include i nomi delle strade
-m = folium.Map(location=[45.0703, 7.6869], zoom_start=15, tiles="OpenStreetMap")
+# Creazione mappa con Esri Satellite e overlay per i nomi delle strade
+m = folium.Map(location=[45.0703, 7.6869], zoom_start=15)
+
+# Aggiunta tile layer Esri Satellite
+esri_satellite = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+folium.TileLayer(tiles=esri_satellite, attr='Esri', name='Esri Satellite').add_to(m)
+
+# Aggiunta tile layer per i nomi delle strade (OpenStreetMap)
+folium.TileLayer(tiles='OpenStreetMap', name='Nomi delle strade').add_to(m)
+
+# Aggiunta controllo per scegliere il layer
+folium.LayerControl().add_to(m)
 
 # Creazione di un FeatureGroup per i marker dei condomini
 condominio_layer = folium.FeatureGroup(name="Condomini")
