@@ -8,7 +8,6 @@ from geopy.geocoders import Nominatim
 from folium.plugins import LocateControl, MeasureControl, Search
 
 # ---- Funzione per caricare le credenziali Google ----
-@st.cache_data
 def load_google_credentials():
     try:
         credentials_info = json.loads(st.secrets["google_credentials"])
@@ -21,19 +20,19 @@ def load_google_credentials():
         st.stop()
 
 # ---- Funzione per connettersi al foglio Google Sheets ----
-@st.cache_data
-def connect_to_google_sheet(gc, sheet_name):
+@st.cache_data  # Memorizza solo i dati, non l'oggetto sheet
+def get_sheet_data(gc, sheet_name):
     try:
         sheet = gc.open(sheet_name).sheet1
         data = sheet.get_all_records()
         st.success("✅ Connessione al Google Sheet riuscita!")
-        return sheet, data
+        return data
     except Exception as e:
         st.error(f"Errore nell'aprire il foglio: {e}")
         st.stop()
 
 # ---- Funzione per ottenere le coordinate di un indirizzo ----
-@st.cache_data
+@st.cache_data  # Memorizza le coordinate per evitare chiamate ripetute
 def get_coordinates(address):
     geolocator = Nominatim(user_agent="streamlit-app", timeout=10)  # Aggiunto timeout
     try:
@@ -49,7 +48,7 @@ st.title("🏢 Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 # Caricamento credenziali e connessione al foglio
 gc = load_google_credentials()
 SHEET_NAME = "Dati_Condomini"
-sheet, data = connect_to_google_sheet(gc, SHEET_NAME)
+data = get_sheet_data(gc, SHEET_NAME)  # Ottieni solo i dati, non l'oggetto sheet
 
 # Sezione dati condomini
 st.subheader("📋 Dati dei Condomini")
