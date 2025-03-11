@@ -1,60 +1,76 @@
 import streamlit as st
-import pandas as pd
 import gspread
 import json
 from google.oauth2.service_account import Credentials
-import folium
-from streamlit_folium import folium_static
 
-# Recupero credenziali da Streamlit Secrets
-credentials_info = st.secrets["google_credentials"]
-credentials = Credentials.from_service_account_info(credentials_info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
+# 🔹 Caricamento delle credenziali dal file JSON nei secrets di Streamlit
+credentials_info = json.loads(st.secrets["google_credentials"])
 
+# 🔹 Definizione delle scopes corrette per Google Sheets e Google Drive
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+# 🔹 Creazione delle credenziali con le nuove scopes
+credentials = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+
+# 🔹 Connessione a Google Sheets
 gc = gspread.authorize(credentials)
 
-# Test di accesso ai Google Sheets
+# 🔹 Nome del file Google Sheets
+SPREADSHEET_NAME = "Dati_Condomini"
+
+# 🔹 Test di accesso a Google Sheets
 try:
-    sheet_list = gc.openall()
-    st.write("Google Sheets disponibili:", [s.title for s in sheet_list])
-except Exception as e:
+    # Recupera tutti i fogli disponibili
+    spreadsheet_list = gc.openall()
+    st.success("✅ Connessione a Google Sheets riuscita!")
+
+    # Verifica se il foglio "Dati_Condomini" esiste
+    sheet_names = [sheet.title for sheet in spreadsheet_list]
+    if SPREADSHEET_NAME not in sheet_names:
+        st.warning(f"⚠️ Il foglio '{SPREADSHEET_NAME}' non esiste. Controlla il nome nel tuo Google Drive.")
+
+    # Apre il foglio
+    sheet = gc.open(SPREADSHEET_NAME).sheet1
+    st.success(f"📂 Foglio '{SPREADSHEET_NAME}' aperto correttamente!")
+
+except gspread.exceptions.APIError as e:
     st.error(f"Errore di accesso: {e}")
-
-# Verifica il nome del file
-try:
-    sheet = gc.open("Dati_Condomini").sheet1  # Assicurati che il nome sia corretto
 except Exception as e:
-    st.error(f"Errore nell'aprire il foglio: {e}")
+    st.error(f"Errore generico: {e}")
 
-# Interfaccia Streamlit
-st.title("Gestione Impianti Fotovoltaici per CER")
+# 🔹 Interfaccia Streamlit per testare l'inserimento di dati
+st.title("Gestione Condomini - Comunità Energetiche Rinnovabili (CER)")
 
-# Input dati condominio
-st.header("Informazioni Condominio")
-nome_condominio = st.text_input("Nome Condominio")
-indirizzo = st.text_input("Indirizzo")
-codice_fiscale = st.text_input("Codice Fiscale")
+with st.form("condominio_form"):
+    nome_condominio = st.text_input("Nome Condominio")
+    indirizzo = st.text_input("Indirizzo")
+    codice_fiscale = st.text_input("Codice Fiscale")
+    impianto_riscaldamento = st.selectbox("Riscaldamento Centralizzato?", ["Sì", "No"])
+    tipo_riscaldamento = st.selectbox("Tipo di Riscaldamento", ["Pompa di calore", "Ibrido", "Altro"])
+    raffreddamento = st.selectbox("Raffreddamento Centralizzato?", ["Sì", "No", "Da Valutare"])
+    numero_condomini = st.number_input("Numero di Condomini", min_value=1, step=1)
+    stato_tetto = st.selectbox("Stato del Tetto", ["Buono", "Mediocre", "Da Rifare"])
 
-# Mappa per localizzazione condominio
-st.header("Localizzazione su Mappa")
-mapa = folium.Map(location=[45.07, 7.69], zoom_start=6)
-folium_static(mapa)
+    # Dati suddivisione unità
+    numero_appartamenti = st.number_input("Numero Appartamenti", min_value=0, step=1)
+    numero_uffici = st.number_input("Numero Uffici", min_value=0, step=1)
+    numero_negozi = st.number_input("Numero Negozi", min_value=0, step=1)
 
-# Questionario
-st.header("Dati Tecnici del Condominio")
-riscaldamento = st.radio("Impianto di riscaldamento centralizzato?", ["Sì", "No"])
-tipo_riscaldamento = st.selectbox("Tipo di riscaldamento", ["Pompa di calore", "Ibrido", "Nessuno"], disabled=riscaldamento=="No")
-raffreddamento = st.radio("Presenza di raffreddamento centralizzato?", ["Sì", "No", "Lo vorremmo valutare"])
-num_condomini = st.number_input("Numero di condomini presenti", min_value=1, step=1)
-num_appartamenti = st.number_input("Numero di appartamenti", min_value=0, step=1)
-num_uffici = st.number_input("Numero di uffici", min_value=0, step=1)
-num_negozi = st.number_input("Numero di negozi", min_value=0, step=1)
-stato_tetto = st.selectbox("Stato del tetto", ["Buono", "Da ristrutturare", "Non valutato"])
+    submit_button = st.form_submit_button("Salva Dati")
 
-# Invio dati a Google Sheets
-if st.button("Salva i dati"):
+# 🔹 Salvataggio dei dati su Google Sheets
+if submit_button:
     try:
-        dati = [nome_condominio, indirizzo, codice_fiscale, riscaldamento, tipo_riscaldamento, raffreddamento, num_condomini, num_appartamenti, num_uffici, num_negozi, stato_tetto]
-        sheet.append_row(dati)
-        st.success("Dati salvati con successo su Google Sheets!")
-    except Exception as e:
-        st.error(f"Errore nel salvataggio su Google Sheets: {e}")
+        new_row = [
+            nome_condominio, indirizzo, codice_fiscale,
+            impianto_riscaldamento, tipo_riscaldamento, raffreddamento,
+            numero_condomini, stato_tetto,
+            numero_appartamenti, numero_uffici, numero_negozi
+        ]
+        sheet.append_row(new_row)
+        st.success("✅ Dati salvati correttamente su Google Sheets!")
+    except gspread.exceptions.APIError as e:
+        st.error(f"Errore nel salvataggio dei dati: {e}")
