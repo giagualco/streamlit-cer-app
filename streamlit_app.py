@@ -2,8 +2,8 @@ import streamlit as st
 import json
 import gspread
 from google.oauth2.service_account import Credentials
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
 import tempfile
 
 # ---- 🔹 Configurazione ----
@@ -14,17 +14,24 @@ SCOPES = [
 ]
 
 # ---- 🔹 Funzione per caricare le credenziali Google ----
+@st.cache_resource
 def load_google_credentials():
     try:
         credentials_info = json.loads(st.secrets["google_credentials"])
         credentials = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
         gc = gspread.authorize(credentials)
 
-        # Autenticazione con Google Drive
+        # Configura Google Drive con PyDrive2
         gauth = GoogleAuth()
-        gauth.LocalWebserverAuth()
+        gauth.LoadCredentialsFile("credentials.json")  # Usa le credenziali esistenti
+        if gauth.credentials is None:
+            gauth.LocalWebserverAuth()  # Se non esistono, richiede autenticazione manuale
+        elif gauth.access_token_expired:
+            gauth.Refresh()  # Refresh del token se scaduto
+        else:
+            gauth.Authorize()  # Autenticazione diretta
+
         drive = GoogleDrive(gauth)
-        
         return gc, drive
     except Exception as e:
         st.error(f"❌ Errore di autenticazione con Google: {e}")
